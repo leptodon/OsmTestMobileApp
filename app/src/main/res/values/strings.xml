@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">MapApp</string>
+    <string name="gps">GPS</string>
+    <string name="date">01.10.2022</string>
+    <string name="time">10:22</string>
+    <string name="InfoWindowButtonText">Посмотреть историю</string>
+    <string name="name">NAME</string>
+    <string name="balloonText">GPS, 14:00</string>
+</resources>
