@@ -2,49 +2,57 @@ package ru.cactus.mapapp
 
 import android.annotation.SuppressLint
 import android.location.Location
-import android.util.Log
-import androidx.lifecycle.LiveData
+import android.location.LocationListener
+import android.location.LocationManager
+import android.os.Bundle
+import android.os.HandlerThread
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY
-import com.google.android.gms.tasks.CancellationToken
-import com.google.android.gms.tasks.CancellationTokenSource
-import com.google.android.gms.tasks.OnTokenCanceledListener
+import kotlinx.coroutines.flow.MutableStateFlow
 
 @SuppressLint("MissingPermission")
 class MainViewModel(
-    private val locationClient: FusedLocationProviderClient
+    private val locationManager: LocationManager
 ) : ViewModel() {
 
-    private val _location = MutableLiveData<Location>()
-    val location: LiveData<Location> = _location
+    companion object {
+        const val MIN_TIME_MS: Long = 1000L
+        const val MIN_DISTANCE_M: Float = 0.0f
+    }
+    private var locationListener: LocationListener? = null
+    val locationStateFlow = MutableStateFlow(Location(LocationManager.GPS_PROVIDER))
+    val gpsProviderState = MutableLiveData(false)
+    private val locHandlerThread = HandlerThread("LocationHandlerThread")
 
     init {
-        setupLocation()
+        startLocation()
     }
 
-    fun setupLocation() {
-        locationClient.lastLocation
-            .addOnSuccessListener { location: Location? ->
-                _location.postValue(location)
-            }
-            .addOnCompleteListener {
-                _location.postValue(it.result)
-            }
+    fun startLocation(minTimeMs: Long = MIN_TIME_MS, minDistanceM: Float = MIN_DISTANCE_M) {
+        locationListener().let {
+            locationListener = it
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTimeMs, minDistanceM, it, locHandlerThread.looper)
+        }
+        gpsProviderState.value = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+    }
 
-        locationClient.getCurrentLocation(PRIORITY_HIGH_ACCURACY, object : CancellationToken() {
-            override fun onCanceledRequested(p0: OnTokenCanceledListener) =
-                CancellationTokenSource().token
+    private fun locationListener() = object : LocationListener {
+        override fun onLocationChanged(location: Location) {
+            locationStateFlow.value = location
+        }
 
-            override fun isCancellationRequested() = false
-        })
-            .addOnCompleteListener {
-                if (it.result != null) _location.postValue(it.result) }
-            .addOnSuccessListener {
-                    location: Location? ->
-                if (location != null) _location.postValue(location)
-            }
+        override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {
+            //Logger.i("onStatusChanged $provider $status $extras")
+        }
 
+        override fun onProviderEnabled(provider: String) {
+            //Logger.i("onProviderEnabled $provider")
+            gpsProviderState.value = true
+        }
+
+        override fun onProviderDisabled(provider: String) {
+            //Logger.i("onProviderDisabled $provider")
+            gpsProviderState.value = false
+        }
     }
 }
