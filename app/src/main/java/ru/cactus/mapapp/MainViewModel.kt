@@ -19,8 +19,9 @@ class MainViewModel(
         const val MIN_TIME_MS: Long = 1000L
         const val MIN_DISTANCE_M: Float = 0.0f
     }
+
     private var locationListener: LocationListener? = null
-    val locationStateFlow = MutableStateFlow(Location(LocationManager.GPS_PROVIDER))
+    val locationStateFlow = MutableStateFlow(Location(LocationManager.NETWORK_PROVIDER))
     val gpsProviderState = MutableLiveData(false)
     private val locHandlerThread = HandlerThread("LocationHandlerThread")
 
@@ -28,30 +29,41 @@ class MainViewModel(
         startLocation()
     }
 
-    fun startLocation(minTimeMs: Long = MIN_TIME_MS, minDistanceM: Float = MIN_DISTANCE_M) {
+    fun startLocation(
+        provider: String = LocationManager.NETWORK_PROVIDER
+    ) {
         locationListener().let {
             locationListener = it
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTimeMs, minDistanceM, it, locHandlerThread.looper)
+
+            locationManager.requestLocationUpdates(
+                provider,
+                MIN_TIME_MS,
+                MIN_DISTANCE_M,
+                it,
+                locHandlerThread.looper
+            )
         }
         gpsProviderState.value = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
     }
 
     private fun locationListener() = object : LocationListener {
         override fun onLocationChanged(location: Location) {
+            if (location.latitude.toInt() != 0 || location.longitude.toInt() != 0) {
+                startLocation(provider = LocationManager.GPS_PROVIDER)
+            } else {
+                startLocation(provider = LocationManager.NETWORK_PROVIDER)
+            }
             locationStateFlow.value = location
         }
 
         override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {
-            //Logger.i("onStatusChanged $provider $status $extras")
         }
 
         override fun onProviderEnabled(provider: String) {
-            //Logger.i("onProviderEnabled $provider")
             gpsProviderState.value = true
         }
 
         override fun onProviderDisabled(provider: String) {
-            //Logger.i("onProviderDisabled $provider")
             gpsProviderState.value = false
         }
     }

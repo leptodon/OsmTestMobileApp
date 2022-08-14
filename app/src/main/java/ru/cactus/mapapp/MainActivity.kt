@@ -66,16 +66,17 @@ class MainActivity : AppCompatActivity() {
             btnZoomOut.setOnClickListener { mapController?.zoomOut() }
 
             btnNextTracker.setOnClickListener {
-                if (currentMarkerIndex == markers.size - 1) {
-                    currentMarkerIndex = 0
+                if (markers.isNotEmpty()) {
+                    if (currentMarkerIndex == markers.size - 1) {
+                        currentMarkerIndex = 0
+                    }
+                    mapController?.setCenter(markers[currentMarkerIndex].position)
+                    markers[currentMarkerIndex].showInfoWindow()
+                    currentMarkerIndex++
+                    dialog()
                 }
-                mapController?.setCenter(markers[currentMarkerIndex].position)
-                markers[currentMarkerIndex].showInfoWindow()
-                currentMarkerIndex++
-                dialog()
             }
         }
-
 
         val locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(this), map)
         val bitmapArrow =
@@ -118,6 +119,7 @@ class MainActivity : AppCompatActivity() {
     private fun permissionGranted() {
         lifecycleScope.launch(Dispatchers.Main) {
             viewModel.locationStateFlow.collect {
+
                 if (it.latitude.toInt() != 0 && isFirstStart) {
                     isFirstStart = false
                     mapController?.setCenter(
