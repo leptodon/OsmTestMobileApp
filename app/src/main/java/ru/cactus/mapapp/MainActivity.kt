@@ -91,8 +91,6 @@ class MainActivity : AppCompatActivity() {
 
         mapController?.setZoom(9.5)
 
-
-
     }
 
     override fun onStart() {
@@ -117,19 +115,20 @@ class MainActivity : AppCompatActivity() {
         map.onPause()
     }
 
-    private fun permissionGranted(){
-        if (isFirstStart) {
-            lifecycleScope.launch(Dispatchers.Main) {
-                viewModel.locationStateFlow.collect {
+    private fun permissionGranted() {
+        lifecycleScope.launch(Dispatchers.Main) {
+            viewModel.locationStateFlow.collect {
+                if (it.latitude.toInt() != 0 && isFirstStart) {
+                    isFirstStart = false
                     mapController?.setCenter(
                         GeoPoint(
                             it.latitude,
                             it.longitude
                         )
                     )
+                    setMockMarkers()
                 }
             }
-            setMockMarkers()
         }
     }
 
